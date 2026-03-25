@@ -1,15 +1,16 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { organizeDay } from '../logic/planner';
-import { colors } from '../styles/globalStyles';
+import { getTheme } from '../styles/globalStyles';
 
 const DashboardScreen = ({ todos, onAddPress, onOpenSettings, onImportICS, onDelete, onToggle, onEdit, isDarkMode }) => {
   const today = new Date().toISOString().slice(0, 10);
   const { schedule } = organizeDay(todos, today);
-  const txtColor = isDarkMode ? '#fff' : '#333';
+  const theme = getTheme(!!isDarkMode);
+  const txtColor = theme.text;
 
   return (
-    <ScrollView style={[styles.container, isDarkMode && { backgroundColor: '#121212' }]}>
+    <ScrollView style={[styles.container, { backgroundColor: theme.background }]}>
       {/* HEADER */}
       <View style={styles.headerRow}>
         <Text style={[styles.title, { color: txtColor }]}>Mon Planning</Text>
@@ -20,20 +21,20 @@ const DashboardScreen = ({ todos, onAddPress, onOpenSettings, onImportICS, onDel
 
       {/* ACTIONS */}
       <View style={styles.actionRow}>
-        <TouchableOpacity onPress={onAddPress} style={[styles.btn, { backgroundColor: colors.primary }]}>
-          <Text style={styles.btnText}>+ Ajouter</Text>
+        <TouchableOpacity onPress={onAddPress} style={[styles.btn, { backgroundColor: theme.primary }]}>
+          <Text style={[styles.btnText, { color: theme.white }]}>+ Ajouter</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onImportICS} style={[styles.btn, { backgroundColor: '#4CAF50' }]}>
-          <Text style={styles.btnText}>📅 Import ICS</Text>
+        <TouchableOpacity onPress={onImportICS} style={[styles.btn, { backgroundColor: theme.success }]}>
+          <Text style={[styles.btnText, { color: theme.white }]}>📅 Import ICS</Text>
         </TouchableOpacity>
       </View>
 
       {/* TIMELINE */}
-      <View style={styles.timeline}>
+      <View style={[styles.timeline, { borderLeftColor: theme.border }]}>
         {schedule?.map((item) => (
           <View key={item.id} style={[
             styles.slot, 
-            isDarkMode && { backgroundColor: '#1e1e1e' }, 
+            { backgroundColor: item.type === 'AUTO' ? theme.taskBg : theme.card, borderLeftColor: item.type === 'AUTO' ? theme.success : theme.danger },
             item.type === 'AUTO' ? styles.autoSlot : styles.fixedSlot
           ]}>
             {/* CHECKBOX */}
@@ -44,19 +45,19 @@ const DashboardScreen = ({ todos, onAddPress, onOpenSettings, onImportICS, onDel
             {/* CONTENU PRINCIPAL */}
             <View style={styles.contentContainer}>
               {/* HEURES */}
-              <Text style={styles.timeTag}>{item.startTime} - {item.endTime}</Text>
+              <Text style={[styles.timeTag, { color: theme.primary }]}>{item.startTime} - {item.endTime}</Text>
               
               {/* TITRE DU COURS (Nettoyé) */}
-              <Text style={[styles.taskText, { color: txtColor }, item.done && styles.textDone]}>
+              <Text style={[styles.taskText, { color: txtColor }, item.done && { color: theme.subText, textDecorationLine: 'line-through' }]}>
                 {item.text}
               </Text>
 
               {/* DÉTAILS SPÉCIFIQUES AUX COURS (FIXED) */}
               {item.type === 'FIXED' && (
                 <View style={styles.detailsBlock}>
-                  {item.location ? <Text style={styles.locationText}>{item.location}</Text> : null}
-                  {item.teacher ? <Text style={styles.teacherText}>{item.teacher}</Text> : null}
-                  {item.remarks ? <Text style={styles.remarksText}>Note: {item.remarks}</Text> : null}
+                  {item.location ? <Text style={[styles.locationText, { color: theme.subText }]}>{item.location}</Text> : null}
+                  {item.teacher ? <Text style={[styles.teacherText, { color: theme.subText }]}>{item.teacher}</Text> : null}
+                  {item.remarks ? <Text style={[styles.remarksText, { color: theme.subText, backgroundColor: theme.inputBg }]}>Note: {item.remarks}</Text> : null}
                 </View>
               )}
             </View>
@@ -79,21 +80,21 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: 'bold' },
   actionRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   btn: { flex: 0.48, padding: 12, borderRadius: 10, alignItems: 'center' },
-  btnText: { color: '#fff', fontWeight: 'bold' },
-  timeline: { borderLeftWidth: 2, borderLeftColor: '#ddd', marginLeft: 10, paddingLeft: 15 },
-  slot: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15, borderRadius: 12, padding: 15, backgroundColor: '#fff', elevation: 3 },
-  fixedSlot: { borderLeftWidth: 6, borderLeftColor: colors.danger },
-  autoSlot: { borderLeftWidth: 6, borderLeftColor: colors.success, backgroundColor: '#f1f8e9' },
+  btnText: { fontWeight: 'bold' },
+  timeline: { borderLeftWidth: 2, marginLeft: 10, paddingLeft: 15 },
+  slot: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 15, borderRadius: 12, padding: 15, elevation: 3 },
+  fixedSlot: { borderLeftWidth: 6 },
+  autoSlot: { borderLeftWidth: 6 },
   checkArea: { marginTop: 15, marginRight: 12 },
   checkIcon: { fontSize: 22 },
   contentContainer: { flex: 1 },
-  timeTag: { fontSize: 13, fontWeight: 'bold', color: colors.primary, marginBottom: 4 },
+  timeTag: { fontSize: 13, fontWeight: 'bold', marginBottom: 4 },
   taskText: { fontSize: 17, fontWeight: '800', marginBottom: 2 },
-  textDone: { textDecorationLine: 'line-through', color: '#aaa' },
+  textDone: { textDecorationLine: 'line-through' },
   detailsBlock: { marginTop: 4 },
-  locationText: { fontSize: 14, color: '#444', fontWeight: '600' },
-  teacherText: { fontSize: 13, color: '#666', fontStyle: 'italic', marginTop: 2 },
-  remarksText: { fontSize: 11, color: '#888', marginTop: 4, padding: 4, backgroundColor: '#f9f9f9', borderRadius: 4 },
+  locationText: { fontSize: 14, fontWeight: '600' },
+  teacherText: { fontSize: 13, fontStyle: 'italic', marginTop: 2 },
+  remarksText: { fontSize: 11, marginTop: 4, padding: 4, borderRadius: 4 },
   actions: { flexDirection: 'row', marginTop: 10 },
   actionBtn: { padding: 8, marginLeft: 5 }
 });

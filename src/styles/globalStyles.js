@@ -1,36 +1,60 @@
 import { StyleSheet } from 'react-native';
 
-export const colors = {
-  primary: '#007bff',       // Bleu principal
-  success: '#00c853',       // Vert succès
-  danger: '#ff5252',        // Rouge action/suppression
-  background: '#f5f5f5',    // Gris clair fond
-  white: '#ffffff',
-  text: '#333333',
-  textLight: '#666666',
-  border: '#eeeeee',
-  lightInput: '#fafafa',
+// Centralized light/dark theme tokens
+export const theme = {
+  light: {
+    background: '#F8F9FA',
+    card: '#FFFFFF',
+    text: '#111827',
+    subText: '#6B7280',
+    primary: '#007bff',
+    success: '#00c853',
+    danger: '#ff5252',
+    border: '#E6E7E8',
+    modalOverlay: 'rgba(0,0,0,0.5)',
+    modalContent: '#FFFFFF',
+    inputBg: '#FAFAFA',
+    white: '#FFFFFF',
+    taskBg: '#FDFDFD',
+    header: '#FFFFFF'
+  },
+  dark: {
+    background: '#0B0B0B',
+    card: '#121212',
+    text: '#FFFFFF',
+    subText: '#BDBDBD',
+    primary: '#3EA6FF',
+    success: '#32D672',
+    danger: '#FF6B6B',
+    border: '#1F1F1F',
+    modalOverlay: 'rgba(0,0,0,0.6)',
+    modalContent: '#151515',
+    inputBg: '#171717',
+    white: '#FFFFFF',
+    taskBg: '#161616',
+    header: '#0F0F0F'
+  }
 };
+
+export const getTheme = (isDark) => (isDark ? theme.dark : theme.light);
 
 export const globalStyles = StyleSheet.create({
   // Conteneurs
-  container: { flex: 1, backgroundColor: colors.background },
-  safeArea: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
+  safeArea: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center' },
   
   // Textes
-  title: { fontSize: 24, fontWeight: 'bold', color: colors.text, textAlign: 'center', marginVertical: 15 },
-  subtitle: { fontSize: 18, fontWeight: 'bold', color: colors.textLight, marginBottom: 10 },
+  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginVertical: 15 },
+  subtitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
   
   // Modals (Fenêtres)
   modalOverlay: { 
     flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.5)', 
     justifyContent: 'center', 
     padding: 20 
   },
   modalContent: { 
-    backgroundColor: colors.white, 
     padding: 20, 
     borderRadius: 15, 
     elevation: 5,
@@ -42,19 +66,14 @@ export const globalStyles = StyleSheet.create({
   
   // Boutons
   btn: { padding: 12, borderRadius: 8, alignItems: 'center', marginVertical: 5 },
-  btnPrimary: { backgroundColor: colors.primary },
-  btnDanger: { backgroundColor: colors.danger },
-  btnText: { color: colors.white, fontWeight: 'bold', fontSize: 16 },
+  btnText: { fontWeight: 'bold', fontSize: 16 },
   
   // Inputs
   input: { 
     borderWidth: 1, 
-    borderColor: '#ddd', 
     padding: 12, 
     borderRadius: 8, 
     fontSize: 16, 
     marginBottom: 15,
-    backgroundColor: colors.lightInput,
-    color: colors.text
   },
 });

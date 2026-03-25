@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '../styles/globalStyles';
+import { getTheme } from '../styles/globalStyles';
 
 const DatePickerModal = ({ onClose, onSelectDate, isDarkMode }) => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -37,8 +37,9 @@ const DatePickerModal = ({ onClose, onSelectDate, isDarkMode }) => {
     return matrix;
   };
 
-  const textColor = isDarkMode ? '#fff' : '#333';
-  const bgColor = isDarkMode ? '#222' : '#fff';
+  const theme = getTheme(!!isDarkMode);
+  const textColor = theme.text;
+  const bgColor = theme.card;
 
   return (
     <View style={[styles.container, { backgroundColor: bgColor }]}>
@@ -46,16 +47,16 @@ const DatePickerModal = ({ onClose, onSelectDate, isDarkMode }) => {
       
       {/* Header Navigation */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={prevMonth} style={styles.navBtn}><Text style={styles.navText}>◀</Text></TouchableOpacity>
+        <TouchableOpacity onPress={prevMonth} style={styles.navBtn}><Text style={[styles.navText, { color: theme.subText }]}>◀</Text></TouchableOpacity>
         <Text style={[styles.monthText, { color: textColor }]}>
             {currentMonth.toLocaleDateString('fr-FR', {month:'long', year:'numeric'})}
         </Text>
-        <TouchableOpacity onPress={nextMonth} style={styles.navBtn}><Text style={styles.navText}>▶</Text></TouchableOpacity>
+        <TouchableOpacity onPress={nextMonth} style={styles.navBtn}><Text style={[styles.navText, { color: theme.subText }]}>▶</Text></TouchableOpacity>
       </View>
 
       {/* Jours Semaine */}
       <View style={styles.weekHeader}>
-        {['L','M','M','J','V','S','D'].map((d,i) => <Text key={i} style={styles.dayName}>{d}</Text>)}
+        {['L','M','M','J','V','S','D'].map((d,i) => <Text key={i} style={[styles.dayName, { color: theme.subText }]}>{d}</Text>)}
       </View>
 
       {/* Grille */}
@@ -77,9 +78,9 @@ const DatePickerModal = ({ onClose, onSelectDate, isDarkMode }) => {
                   day.ymd === new Date().toISOString().slice(0,10) && styles.today
                 ]}>
                 <Text style={[
-                    styles.dayText, 
-                    { color: !day.inMonth ? '#777' : textColor },
-                    day.ymd === new Date().toISOString().slice(0,10) && { color: colors.primary, fontWeight:'bold' }
+                  styles.dayText, 
+                  { color: !day.inMonth ? theme.subText : textColor },
+                  day.ymd === new Date().toISOString().slice(0,10) && { color: theme.primary, fontWeight:'bold' }
                 ]}>
                     {day.date.getDate()}
                 </Text>
@@ -90,7 +91,7 @@ const DatePickerModal = ({ onClose, onSelectDate, isDarkMode }) => {
       </View>
 
       <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
-        <Text style={{color: colors.danger}}>Annuler</Text>
+        <Text style={{color: theme.danger}}>Annuler</Text>
       </TouchableOpacity>
     </View>
   );
@@ -101,15 +102,15 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   navBtn: { padding: 10 },
-  navText: { fontSize: 18, color: colors.primary },
+  navText: { fontSize: 18 },
   monthText: { fontSize: 16, fontWeight: 'bold', textTransform: 'capitalize' },
   weekHeader: { flexDirection: 'row', marginBottom: 5 },
-  dayName: { flex: 1, textAlign: 'center', fontWeight: 'bold', color: '#888', fontSize: 12 },
+  dayName: { flex: 1, textAlign: 'center', fontWeight: 'bold', fontSize: 12 },
   weekRow: { flexDirection: 'row', height: 40 },
   dayCell: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   dayText: { fontSize: 14 },
   dayOut: { opacity: 0.3 },
-  today: { borderWidth: 1, borderColor: colors.primary, borderRadius: 20 },
+  today: { borderWidth: 1, borderRadius: 20 },
   cancelBtn: { marginTop: 15, alignItems: 'center', padding: 10 }
 });
 

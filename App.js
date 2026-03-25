@@ -4,8 +4,9 @@ import {
   ScrollView, StyleSheet, useWindowDimensions, Alert, Platform, StatusBar
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import * as DocumentPicker from 'expo-document-picker';
-import { globalStyles, colors } from './src/styles/globalStyles';
+import { globalStyles, getTheme } from './src/styles/globalStyles';
 
 import DashboardScreen from './src/screens/DashboardScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
@@ -213,16 +214,47 @@ export default function App() {
     setResetKey(k => k + 1);
   };
 
+  // Add tasks returned by AI assistant (expected array of task objects)
+  const handleAddTasksFromAI = async (newTasks) => {
+    if (!Array.isArray(newTasks) || newTasks.length === 0) return;
+    try {
+      // Normalize and assign ids where needed
+      const normalized = newTasks.map(t => {
+        const id = t.id ? String(t.id) : Date.now().toString() + Math.random().toString(36).slice(2,8);
+        return {
+          id,
+          text: t.text || 'Nouvelle tâche',
+          type: t.type || 'FIXED',
+          done: !!t.done,
+          dueDate: t.dueDate || (t.type === 'FIXED' ? new Date().toISOString().slice(0,10) : null),
+          startTime: t.startTime || null,
+          endTime: t.endTime || null,
+          recurrence: t.recurrence || null,
+          totalHours: t.totalHours !== undefined ? String(t.totalHours) : (t.type === 'PROJECT' ? '1' : 0),
+          deadline: t.deadline || null
+        };
+      });
+      const updated = [...normalized, ...todos];
+      await saveTodos(updated);
+      Alert.alert('Tâches ajoutées', `${normalized.length} tâche(s) ajoutée(s).`);
+    } catch (e) {
+      console.warn('handleAddTasksFromAI', e);
+      Alert.alert('Erreur', 'Impossible d\'ajouter les tâches générées.');
+    }
+  };
+
+  const theme = getTheme(!!isDarkMode);
+
   return (
-    <SafeAreaView key={resetKey} style={{flex: 1, backgroundColor: isDarkMode ? '#121212' : '#f5f5f5'}}>
+    <SafeAreaView key={resetKey} style={{flex: 1, backgroundColor: theme.background}}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
-      <View style={{ padding: 10, backgroundColor: isDarkMode ? '#1e1e1e' : '#fff', borderBottomWidth: 1, borderColor: '#eee' }}>
+      <View style={{ padding: 10, backgroundColor: theme.header, borderBottomWidth: 1, borderColor: theme.border || '#eee' }}>
         {showFocus && <PomodoroTimer isDarkMode={isDarkMode} />}
       </View>
 
       <ScrollView ref={scrollRef} horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
           <View style={{ width }}>
-          <CalendarScreen tasks={todos} isDarkMode={isDarkMode} onSelectDate={(ymd) => { console.log('Calendar selected', ymd); }} onToggle={handleToggle} />
+          <CalendarScreen tasks={todos} isDarkMode={isDarkMode} onToggle={handleToggle} />
         </View>
         
         <View style={{ width }}>
@@ -255,11 +287,12 @@ export default function App() {
         setIsDarkMode={setIsDarkMode} 
         showFocus={showFocus}
         setShowFocus={(v) => { setShowFocus(v); AsyncStorage.setItem('@vicrasti_showFocus', JSON.stringify(v)); }}
+        onAddTasks={handleAddTasksFromAI}
       />
 
       <Modal visible={showAddModal} transparent animationType="slide">
-        <View style={globalStyles.modalOverlay}>
-          <ScrollView contentContainerStyle={globalStyles.modalContent}>
+        <View style={[globalStyles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <ScrollView contentContainerStyle={[globalStyles.modalContent, { backgroundColor: theme.modalContent }]}>
             <Text style={globalStyles.title}>{editingTodo ? "Modifier" : "Ajouter"}</Text>
             <View style={styles.tabRow}>
               <TouchableOpacity onPress={()=>setTaskType('FIXED')} style={[styles.tab, taskType==='FIXED' && styles.activeTab]}><Text style={{color: taskType==='FIXED' ? '#fff' : '#000'}}>FIXE</Text></TouchableOpacity>
@@ -320,15 +353,15 @@ export default function App() {
                 </TouchableOpacity>
               </>
             )}
-            <TouchableOpacity onPress={handleSave} style={[globalStyles.btn, {backgroundColor: colors.primary}]}><Text style={{color:'#fff', fontWeight:'bold'}}>ENREGISTRER</Text></TouchableOpacity>
+            <TouchableOpacity onPress={handleSave} style={[globalStyles.btn, {backgroundColor: theme.primary}]}><Text style={{color:'#fff', fontWeight:'bold'}}>ENREGISTRER</Text></TouchableOpacity>
             <TouchableOpacity onPress={()=>setShowAddModal(false)}><Text style={{textAlign:'center', marginTop:15, color:'red'}}>Annuler</Text></TouchableOpacity>
           </ScrollView>
         </View>
       </Modal>
       {/* Calendar picker modal (reusing CalendarScreen) */}
       <Modal visible={showCalendarPicker} transparent animationType="slide">
-        <View style={globalStyles.modalOverlay}>
-          <View style={[globalStyles.modalContent, {width: '98%', maxWidth: 900, height: '92%', borderRadius: 12, padding: 12}]}>
+        <View style={[globalStyles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[globalStyles.modalContent, { backgroundColor: theme.modalContent, width: '98%', maxWidth: 900, height: '92%', borderRadius: 12, padding: 12 }] }>
             <Text style={globalStyles.title}>Choisir une date</Text>
             <CalendarScreen style={{flex:1}} tasks={todos} onSelectDate={(ymd)=>{
               if (calendarTarget === 'date') setFormData({...formData, date: ymd});
@@ -342,8 +375,8 @@ export default function App() {
 
       {/* Time picker modal */}
       <Modal visible={showTimePicker} transparent animationType="fade">
-        <View style={globalStyles.modalOverlay}>
-          <View style={[globalStyles.modalContent, {maxWidth:420, width:'90%', padding:12}]}> 
+        <View style={[globalStyles.modalOverlay, { backgroundColor: theme.modalOverlay }]}>
+          <View style={[globalStyles.modalContent, { backgroundColor: theme.modalContent, maxWidth:420, width:'90%', padding:12 }]}> 
             <Text style={{fontSize:18, fontWeight:'bold', marginBottom:8}}>Choisir l'heure</Text>
             <View style={{flexDirection:'row', justifyContent:'space-between', marginBottom:10}}>
               <View style={{flex:1, marginRight:6}}>
@@ -354,7 +387,7 @@ export default function App() {
                       const h = String(i).padStart(2,'0');
                       const sel = pickerHour === h;
                       return (
-                        <TouchableOpacity key={h} onPress={()=>setPickerHour(h)} style={{padding:8, margin:4, borderRadius:6, backgroundColor: sel ? colors.primary : '#eee'}}>
+                        <TouchableOpacity key={h} onPress={()=>setPickerHour(h)} style={{padding:8, margin:4, borderRadius:6, backgroundColor: sel ? theme.primary : '#eee'}}>
                           <Text style={{color: sel ? '#fff' : '#000'}}>{h}</Text>
                         </TouchableOpacity>
                       );
@@ -366,7 +399,7 @@ export default function App() {
                 <Text style={{marginBottom:6}}>Minutes</Text>
                 <View>
                   {['00','15','30','45'].map(m => (
-                    <TouchableOpacity key={m} onPress={()=>setPickerMinute(m)} style={{padding:10, marginBottom:6, borderRadius:6, backgroundColor: pickerMinute===m ? colors.primary : '#eee', alignItems:'center'}}>
+                    <TouchableOpacity key={m} onPress={()=>setPickerMinute(m)} style={{padding:10, marginBottom:6, borderRadius:6, backgroundColor: pickerMinute===m ? theme.primary : '#eee', alignItems:'center'}}>
                       <Text style={{color: pickerMinute===m ? '#fff' : '#000'}}>{m}</Text>
                     </TouchableOpacity>
                   ))}
@@ -396,7 +429,7 @@ export default function App() {
                 }
                 setFormData(newForm);
                 setShowTimePicker(false);
-              }} style={[globalStyles.btn,{backgroundColor: colors.primary}]}><Text style={{color:'#fff'}}>Confirmer</Text></TouchableOpacity>
+              }} style={[globalStyles.btn,{backgroundColor: theme.primary}]}><Text style={{color:'#fff'}}>Confirmer</Text></TouchableOpacity>
             </View>
           </View>
         </View>
@@ -408,9 +441,9 @@ export default function App() {
 const styles = StyleSheet.create({
   tabRow: { flexDirection: 'row', marginBottom: 15, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#ddd' },
   tab: { flex: 1, padding: 10, alignItems: 'center', backgroundColor: '#eee' },
-  activeTab: { backgroundColor: colors.primary },
+  activeTab: { backgroundColor: '#007bff' },
   recButton: { paddingVertical:8, paddingHorizontal:12, borderRadius:6, backgroundColor:'#eee', marginRight:8 },
-  recActive: { backgroundColor: colors.primary },
+  recActive: { backgroundColor: '#007bff' },
   dayChip: { paddingVertical:6, paddingHorizontal:10, borderRadius:6, backgroundColor:'#f0f0f0', marginRight:6, marginBottom:6 },
-  dayChipActive: { backgroundColor: colors.primary }
+  dayChipActive: { backgroundColor: '#007bff' }
 });

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors } from '../styles/globalStyles';
+import { getTheme } from '../styles/globalStyles';
 
 const AchievementsScreen = ({ todos = [], stats = { completed: 0 }, isDarkMode = false }) => {
   const completedCount = stats.completed || 0;
@@ -142,10 +142,11 @@ const AchievementsScreen = ({ todos = [], stats = { completed: 0 }, isDarkMode =
   const [showTrophyModal, setShowTrophyModal] = useState(false);
   const [selectedTier, setSelectedTier] = useState(null);
   // theme-aware colors
-  const bg = isDarkMode ? '#121212' : '#F8F9FA';
-  const cardBg = isDarkMode ? '#171717' : '#FFF';
-  const textColor = isDarkMode ? '#FFFFFF' : '#000000';
-  const subText = isDarkMode ? '#BBBBBB' : '#666666';
+  const theme = getTheme(!!isDarkMode);
+  const bg = theme.background;
+  const cardBg = theme.card;
+  const textColor = theme.text;
+  const subText = theme.subText;
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: bg }]}> 
@@ -154,12 +155,14 @@ const AchievementsScreen = ({ todos = [], stats = { completed: 0 }, isDarkMode =
       <View style={[styles.levelCard, { backgroundColor: cardBg }] }>
         <View style={styles.outerCircle}>
           <View style={styles.innerCircle}>
-            <Text style={styles.levelNumber}>{level}</Text>
+            <Text style={[styles.levelNumber, { color: theme.primary }]}>{level}</Text>
             <Text style={styles.levelLabel}>NIVEAU</Text>
           </View>
         </View>
         <Text style={[styles.xpText, { color: subText }]}>{xp} / 10 tâches pour le niveau {level + 1}</Text>
-        <View style={[styles.progressBarBg, { backgroundColor: isDarkMode ? '#222' : '#EEE' }]}><View style={[styles.progressBarFill, { width: `${xp * 10}%` }]} /></View>
+        <View style={[styles.progressBarBg, { backgroundColor: isDarkMode ? theme.card : theme.border }]}>
+          <View style={[styles.progressBarFill, { width: `${xp * 10}%`, backgroundColor: theme.primary }]} />
+        </View>
       </View>
 
       <Text style={styles.sectionTitle}>Répartition Projets</Text>
@@ -168,12 +171,12 @@ const AchievementsScreen = ({ todos = [], stats = { completed: 0 }, isDarkMode =
           <View>
             <View style={styles.segmentedBar}>
               {projects.map((p, i) => (
-                <View key={p.id} style={{ flex: parseFloat(p.totalHours), backgroundColor: i % 2 === 0 ? colors.primary : colors.success, borderRightWidth: 1, borderColor: '#fff' }} />
+                <View key={p.id} style={{ flex: parseFloat(p.totalHours), backgroundColor: i % 2 === 0 ? theme.primary : theme.success, borderRightWidth: 1, borderColor: theme.white }} />
               ))}
             </View>
             {projects.map((p, i) => (
               <View key={p.id} style={styles.legendItem}>
-                <View style={[styles.dot, { backgroundColor: i % 2 === 0 ? colors.primary : colors.success }]} />
+                <View style={[styles.dot, { backgroundColor: i % 2 === 0 ? theme.primary : theme.success }]} />
                 <Text style={styles.legendText}>{p.text} ({p.totalHours}h)</Text>
               </View>
             ))}
@@ -206,9 +209,9 @@ const AchievementsScreen = ({ todos = [], stats = { completed: 0 }, isDarkMode =
                 <Text style={{fontSize:12, color: subText}}>{earnedAt ? new Date(earnedAt).toLocaleDateString() : (next ? `${value}/${next.target}` : `${value}`)}</Text>
               </View>
 
-              <View style={{height:8, backgroundColor: isDarkMode ? '#222' : '#eee', borderRadius:6, overflow:'hidden'}}>
-                <View style={{height:'100%', width: `${progress}%`, backgroundColor: colors.primary }} />
-              </View>
+                <View style={{height:8, backgroundColor: theme.card, borderRadius:6, overflow:'hidden'}}>
+                  <View style={{height:'100%', width: `${progress}%`, backgroundColor: theme.primary }} />
+                </View>
             </TouchableOpacity>
           );
         })}
@@ -223,7 +226,7 @@ const AchievementsScreen = ({ todos = [], stats = { completed: 0 }, isDarkMode =
                 const earned = trophiesState && trophiesState[t.id];
                 return (
                   <TouchableOpacity key={t.id} onPress={() => { setSelectedTier(t); }}>
-                    <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:8, borderBottomWidth:1, borderColor: isDarkMode ? '#2a2a2a' : '#eee'}}>
+                    <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:8, borderBottomWidth:1, borderColor: theme.border}}>
                       <View>
                         <Text style={{fontWeight:'700', color: textColor}}>{t.title} {t.target && typeof t.target === 'number' ? (t.title.toString().match(/h/i) ? '' : '') : ''}</Text>
                         <Text style={{color: subText, fontSize:12}}>Objectif: {t.target}</Text>
@@ -238,14 +241,14 @@ const AchievementsScreen = ({ todos = [], stats = { completed: 0 }, isDarkMode =
               })}
 
               {selectedTier && (
-                <View style={{marginTop:12, padding:12, backgroundColor: isDarkMode ? '#0f0f0f' : '#f7f7f7', borderRadius:8}}>
+                <View style={{marginTop:12, padding:12, backgroundColor: theme.card, borderRadius:8}}>
                   <Text style={{fontWeight:'700', color: textColor, marginBottom:6}}>{selectedTier.title}</Text>
                   <Text style={{color: subText}}>{selectedTier.description}</Text>
                 </View>
               )}
             </ScrollView>
-            <TouchableOpacity onPress={() => { setShowTrophyModal(false); setSelectedGroup(null); }} style={{marginTop:12, backgroundColor: colors.primary, padding:10, borderRadius:8, alignItems:'center'}}>
-              <Text style={{color:'#fff', fontWeight:'700'}}>Fermer</Text>
+            <TouchableOpacity onPress={() => { setShowTrophyModal(false); setSelectedGroup(null); }} style={{marginTop:12, backgroundColor: theme.primary, padding:10, borderRadius:8, alignItems:'center'}}>
+              <Text style={{color: theme.white, fontWeight:'700'}}>Fermer</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -255,24 +258,24 @@ const AchievementsScreen = ({ todos = [], stats = { completed: 0 }, isDarkMode =
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#F8F9FA' },
+  container: { flex: 1, padding: 20 },
   mainTitle: { fontSize: 26, fontWeight: '800', marginBottom: 20 },
-  levelCard: { backgroundColor: '#FFF', padding: 25, borderRadius: 24, alignItems: 'center', elevation: 4, marginBottom: 25 },
-  outerCircle: { width: 110, height: 110, borderRadius: 55, backgroundColor: '#F0F0F0', justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  innerCircle: { width: 90, height: 90, borderRadius: 45, backgroundColor: '#FFF', elevation: 2, justifyContent: 'center', alignItems: 'center' },
-  levelNumber: { fontSize: 32, fontWeight: 'bold', color: colors.primary },
-  levelLabel: { fontSize: 10, color: '#999', fontWeight: 'bold' },
-  xpText: { fontSize: 13, color: '#666', marginBottom: 8 },
-  progressBarBg: { width: '100%', height: 6, backgroundColor: '#EEE', borderRadius: 3, overflow: 'hidden' },
-  progressBarFill: { height: '100%', backgroundColor: colors.primary },
+  levelCard: { padding: 25, borderRadius: 24, alignItems: 'center', elevation: 4, marginBottom: 25 },
+  outerCircle: { width: 110, height: 110, borderRadius: 55, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
+  innerCircle: { width: 90, height: 90, borderRadius: 45, elevation: 2, justifyContent: 'center', alignItems: 'center' },
+  levelNumber: { fontSize: 32, fontWeight: 'bold' },
+  levelLabel: { fontSize: 10, fontWeight: 'bold' },
+  xpText: { fontSize: 13, marginBottom: 8 },
+  progressBarBg: { width: '100%', height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressBarFill: { height: '100%' },
   sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 15 },
-  chartCard: { backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginBottom: 25 },
+  chartCard: { padding: 20, borderRadius: 20, marginBottom: 25 },
   trophyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   segmentedBar: { height: 18, borderRadius: 9, flexDirection: 'row', overflow: 'hidden', marginBottom: 15 },
   legendItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   dot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  legendText: { fontSize: 14, color: '#444' },
-  empty: { fontStyle: 'italic', color: '#999', textAlign: 'center' }
+  legendText: { fontSize: 14 },
+  empty: { fontStyle: 'italic', textAlign: 'center' }
 });
 
 export default AchievementsScreen;
