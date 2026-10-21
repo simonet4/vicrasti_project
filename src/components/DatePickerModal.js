@@ -1,117 +1,69 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { getTheme } from '../styles/globalStyles';
+import React, { useState, useEffect } from 'react';
+import { View, Pressable, StyleSheet } from 'react-native';
+import { useTheme, space } from '../styles/globalStyles';
+import { Sheet, Txt, IconButton, Chip } from './ui';
+import { parseYmd, todayYmd, addDays, buildMonthMatrix } from '../logic/dates';
 
-const DatePickerModal = ({ onClose, onSelectDate, isDarkMode }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+const DatePickerModal = ({ visible, value, onClose, onSelectDate, title = 'Choisir une date', allowClear, onClear }) => {
+  const t = useTheme();
+  const [month, setMonth] = useState(value ? parseYmd(value) : new Date());
+  useEffect(() => { if (visible) setMonth(value ? parseYmd(value) : new Date()); }, [visible, value]);
 
-  const nextMonth = () => { const d = new Date(currentMonth); d.setMonth(d.getMonth()+1); setCurrentMonth(d); };
-  const prevMonth = () => { const d = new Date(currentMonth); d.setMonth(d.getMonth()-1); setCurrentMonth(d); };
-
-  const buildMonthMatrix = (date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const startDay = (firstDay.getDay() + 6) % 7; 
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const prevMonthDays = new Date(year, month, 0).getDate();
-    
-    const matrix = [];
-    let week = [];
-    
-    for (let i = 0; i < startDay; i++) {
-      const d = new Date(year, month - 1, prevMonthDays - (startDay - 1 - i));
-      week.push({ date: d, inMonth: false, ymd: d.toISOString().slice(0,10) });
-    }
-    for (let day = 1; day <= daysInMonth; day++) {
-      const d = new Date(year, month, day);
-      week.push({ date: d, inMonth: true, ymd: d.toISOString().slice(0,10) });
-      if (week.length === 7) { matrix.push(week); week = []; }
-    }
-    let nextDay = 1;
-    while (week.length > 0 && week.length < 7) {
-      const d = new Date(year, month + 1, nextDay++);
-      week.push({ date: d, inMonth: false, ymd: d.toISOString().slice(0,10) });
-    }
-    if (week.length > 0) matrix.push(week);
-    return matrix;
-  };
-
-  const theme = getTheme(!!isDarkMode);
-  const textColor = theme.text;
-  const bgColor = theme.card;
+  const today = todayYmd();
+  const pick = (ymd) => { onSelectDate(ymd); onClose(); };
+  const shift = (n) => setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
 
   return (
-    <View style={[styles.container, { backgroundColor: bgColor }]}>
-      <Text style={[styles.title, {color: textColor}]}>Choisir une date</Text>
-      
-      {/* Header Navigation */}
+    <Sheet visible={visible} onClose={onClose} title={title}>
+      <View style={styles.quick}>
+        <Chip label="Aujourd'hui" onPress={() => pick(today)} selected={value === today} />
+        <Chip label="Demain" onPress={() => pick(addDays(today, 1))} selected={value === addDays(today, 1)} />
+        <Chip label="Dans 1 semaine" onPress={() => pick(addDays(today, 7))} selected={value === addDays(today, 7)} />
+        {allowClear ? <Chip label="Aucune" onPress={() => { onClear(); onClose(); }} selected={!value} /> : null}
+      </View>
+
       <View style={styles.header}>
-        <TouchableOpacity onPress={prevMonth} style={styles.navBtn}><Text style={[styles.navText, { color: theme.subText }]}>◀</Text></TouchableOpacity>
-        <Text style={[styles.monthText, { color: textColor }]}>
-            {currentMonth.toLocaleDateString('fr-FR', {month:'long', year:'numeric'})}
-        </Text>
-        <TouchableOpacity onPress={nextMonth} style={styles.navBtn}><Text style={[styles.navText, { color: theme.subText }]}>▶</Text></TouchableOpacity>
+        <IconButton name="chevron-left" onPress={() => shift(-1)} />
+        <Txt variant="heading" style={{ textTransform: 'capitalize' }}>
+          {month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+        </Txt>
+        <IconButton name="chevron-right" onPress={() => shift(1)} />
       </View>
 
-      {/* Jours Semaine */}
-      <View style={styles.weekHeader}>
-        {['L','M','M','J','V','S','D'].map((d,i) => <Text key={i} style={[styles.dayName, { color: theme.subText }]}>{d}</Text>)}
+      <View style={styles.week}>
+        {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <Txt key={i} variant="small" faint style={styles.dayName}>{d}</Txt>)}
       </View>
-
-      {/* Grille */}
-      <View>
-        {buildMonthMatrix(currentMonth).map((week, i) => (
-          <View key={i} style={styles.weekRow}>
-            {week.map((day, j) => (
-              <TouchableOpacity 
-                key={j} 
-                onPress={() => {
-                   if(day.inMonth) {
-                       onSelectDate(day.ymd);
-                       onClose(); // Ferme le calendrier
-                   }
-                }}
-                style={[
-                  styles.dayCell, 
-                  !day.inMonth && styles.dayOut,
-                  day.ymd === new Date().toISOString().slice(0,10) && styles.today
-                ]}>
-                <Text style={[
-                  styles.dayText, 
-                  { color: !day.inMonth ? theme.subText : textColor },
-                  day.ymd === new Date().toISOString().slice(0,10) && { color: theme.primary, fontWeight:'bold' }
-                ]}>
+      {buildMonthMatrix(month).map((week, i) => (
+        <View key={i} style={styles.week}>
+          {week.map(day => {
+            const selected = day.ymd === value;
+            const isToday = day.ymd === today;
+            return (
+              <Pressable key={day.ymd} onPress={() => pick(day.ymd)} style={styles.cell}>
+                <View style={[styles.circle, selected && { backgroundColor: t.accent }]}>
+                  <Txt
+                    color={selected ? t.onAccent : isToday ? t.accent : day.inMonth ? t.text : t.textFaint}
+                    style={{ fontWeight: selected || isToday ? '700' : '400' }}
+                  >
                     {day.date.getDate()}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        ))}
-      </View>
-
-      <TouchableOpacity onPress={onClose} style={styles.cancelBtn}>
-        <Text style={{color: theme.danger}}>Annuler</Text>
-      </TouchableOpacity>
-    </View>
+                  </Txt>
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      ))}
+    </Sheet>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { width: '100%' }, // Prend toute la largeur disponible
-  title: { fontSize: 18, fontWeight: 'bold', textAlign: 'center', marginBottom: 15 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  navBtn: { padding: 10 },
-  navText: { fontSize: 18 },
-  monthText: { fontSize: 16, fontWeight: 'bold', textTransform: 'capitalize' },
-  weekHeader: { flexDirection: 'row', marginBottom: 5 },
-  dayName: { flex: 1, textAlign: 'center', fontWeight: 'bold', fontSize: 12 },
-  weekRow: { flexDirection: 'row', height: 40 },
-  dayCell: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  dayText: { fontSize: 14 },
-  dayOut: { opacity: 0.3 },
-  today: { borderWidth: 1, borderRadius: 20 },
-  cancelBtn: { marginTop: 15, alignItems: 'center', padding: 10 }
+  quick: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.md },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: space.sm },
+  week: { flexDirection: 'row' },
+  dayName: { flex: 1, textAlign: 'center', marginBottom: space.xs },
+  cell: { flex: 1, alignItems: 'center', paddingVertical: 3 },
+  circle: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
 });
 
 export default DatePickerModal;

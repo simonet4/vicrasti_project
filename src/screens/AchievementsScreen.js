@@ -1,281 +1,203 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Modal, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useMemo } from 'react';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getTheme } from '../styles/globalStyles';
+import { useTheme, space, radius } from '../styles/globalStyles';
+import { Txt, Icon, Card, ProgressBar, Divider, Sheet } from '../components/ui';
+import { todayYmd, parseYmd, formatDuration } from '../logic/dates';
+import {
+  dailyActivity, computeStreak, computeTotals, computeXp, levelFromXp, levelTitle, lastDays,
+} from '../logic/stats';
 
-const AchievementsScreen = ({ todos = [], stats = { completed: 0 }, isDarkMode = false }) => {
-  const completedCount = stats.completed || 0;
-  const level = Math.floor(completedCount / 10) + 1;
-  const xp = completedCount % 10;
+const TROPHY_KEY = '@vicrasti_trophies';
+const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
 
-  const projects = (todos || []).filter(t => t.type === 'PROJECT');
-  const totalProjectHours = projects.reduce((acc, p) => acc + parseFloat(p.totalHours || 0), 0);
+const GROUPS = [
+  { key: 'tasks', icon: 'check-circle', label: 'Tâches terminées', unit: '', targets: [1, 10, 25, 50, 100, 250, 500, 1000], get: (x) => x.tasks },
+  { key: 'pomodoros', icon: 'target', label: 'Sessions de focus', unit: '', targets: [1, 10, 25, 50, 100, 250, 500], get: (x) => x.pomodoros },
+  { key: 'focus', icon: 'clock', label: 'Heures de focus', unit: ' h', targets: [1, 10, 25, 50, 100, 250], get: (x) => Math.floor(x.focusMin / 60) },
+  { key: 'streak', icon: 'zap', label: 'Meilleure série', unit: ' j', targets: [3, 7, 14, 30, 60, 100], get: (x, s) => s.best },
+  { key: 'projects', icon: 'folder', label: 'Projets terminés', unit: '', targets: [1, 3, 5, 10, 25], get: (x) => x.projects },
+  { key: 'slots', icon: 'layers', label: 'Sessions de projet', unit: '', targets: [1, 10, 50, 100, 250], get: (x) => x.slots },
+  { key: 'early', icon: 'sunrise', label: 'Lève-tôt · avant 8h', unit: '', targets: [1, 10, 50], get: (x) => x.earlyBird },
+  { key: 'night', icon: 'moon', label: 'Noctambule · après 21h', unit: '', targets: [1, 10, 50], get: (x) => x.nightOwl },
+];
 
-  // additional simple metrics for new trophies
-  const deadlinesCount = (todos || []).filter(t => (t.type === 'PROJECT' && t.deadline) || (t.type === 'FIXED' && t.dueDate)).length;
-  const earlyBirdCount = (todos || []).filter(t => t.type === 'FIXED' && t.startTime && parseInt(t.startTime.split(':')[0],10) < 7).length;
-  const nightOwlCount = (todos || []).filter(t => t.type === 'FIXED' && t.startTime && parseInt(t.startTime.split(':')[0],10) >= 22).length;
+const AchievementsScreen = ({ todos = [], focusLog = [], settings }) => {
+  const t = useTheme();
+  const today = todayYmd();
+  const goal = settings.dailyGoal || 4;
 
-  const [trophiesState, setTrophiesState] = useState({});
+  const activity = useMemo(() => dailyActivity(todos, focusLog), [todos, focusLog]);
+  const streak = useMemo(() => computeStreak(activity, today, goal), [activity, today, goal]);
+  const totals = useMemo(() => computeTotals(todos, focusLog), [todos, focusLog]);
+  const lvl = levelFromXp(computeXp(totals));
+  const week = lastDays(activity, today, 7);
+  const maxMin = Math.max(settings.workMin * goal, ...week.map(d => d.focusMin), 1);
+  const weekFocus = week.reduce((a, d) => a + d.focusMin, 0);
+  const todayAct = activity[today] || { pomodoros: 0, focusMin: 0 };
 
-  const TROPHY_KEY = '@vicrasti_trophies';
-
-  const recurringCount = (todos || []).filter(t => t.recurrence && t.recurrence.type && t.recurrence.type !== 'none').length;
-  const longTaskCount = (todos || []).filter(t => t.type === 'FIXED' && t.startTime && t.endTime && (function(){ const s = parseInt(t.startTime.split(':')[0],10); const e = parseInt(t.endTime.split(':')[0],10); return !isNaN(s) && !isNaN(e) && (e - s) >= 4; })()).length;
-  // Grouped, progressive trophy series (compact display)
-  const groupedTrophies = [
-    { key: 'tasks', label: 'Tâches complétées', tiers: [
-      { id: 'tasks_1', title: '1', target: 1 },
-      { id: 'tasks_10', title: '10', target: 10 },
-      { id: 'tasks_25', title: '25', target: 25 },
-      { id: 'tasks_50', title: '50', target: 50 },
-      { id: 'tasks_100', title: '100', target: 100 },
-      { id: 'tasks_200', title: '200', target: 200 },
-      { id: 'tasks_500', title: '500', target: 500 },
-      { id: 'tasks_1000', title: '1000', target: 1000 }
-    ], getter: () => completedCount },
-
-    { key: 'projects', label: 'Projets', tiers: [
-      { id: 'proj_1', title: '1', target: 1 },
-      { id: 'proj_3', title: '3', target: 3 },
-      { id: 'proj_5', title: '5', target: 5 },
-      { id: 'proj_10', title: '10', target: 10 }
-    ], getter: () => projects.length },
-
-    { key: 'project_hours', label: 'Heures projet', tiers: [
-      { id: 'ph_10', title: '10h', target: 10 },
-      { id: 'ph_50', title: '50h', target: 50 },
-      { id: 'ph_100', title: '100h', target: 100 },
-      { id: 'ph_200', title: '200h', target: 200 },
-      { id: 'ph_500', title: '500h', target: 500 }
-    ], getter: () => totalProjectHours },
-
-    { key: 'recurring', label: 'Récurrentes', tiers: [
-      { id: 'rec_1', title: '1', target: 1 },
-      { id: 'rec_5', title: '5', target: 5 },
-      { id: 'rec_10', title: '10', target: 10 }
-    ], getter: () => recurringCount },
-
-    { key: 'deadlines', label: 'Deadlines', tiers: [
-      { id: 'dl_1', title: '1', target: 1 },
-      { id: 'dl_5', title: '5', target: 5 },
-      { id: 'dl_20', title: '20', target: 20 }
-    ], getter: () => deadlinesCount },
-
-    { key: 'early', label: 'Lève-tôt', tiers: [
-      { id: 'eb_1', title: '1', target: 1 },
-      { id: 'eb_10', title: '10', target: 10 }
-    ], getter: () => earlyBirdCount },
-
-    { key: 'night', label: 'Noctambule', tiers: [
-      { id: 'no_1', title: '1', target: 1 },
-      { id: 'no_10', title: '10', target: 10 }
-    ], getter: () => nightOwlCount },
-
-    { key: 'special', label: 'Spéciaux', tiers: [
-      { id: 'long_4h', title: 'Long 4h+', target: 1 },
-      { id: 'long_8h', title: 'Très long 8h+', target: 1 },
-      { id: 'early_bird', title: 'Lève-tôt', target: 1 }
-    ], getter: () => 0 }
-  ];
-
-  // Ensure every tier has a human-friendly description (in French)
-  groupedTrophies.forEach(group => {
-    group.tiers.forEach(t => {
-      if (!t.description) {
-        if (group.key === 'tasks') {
-          t.description = `Compléter ${t.target} tâche${t.target > 1 ? 's' : ''}.`;
-        } else if (group.key === 'projects') {
-          t.description = `Créer et gérer ${t.target} projet${t.target > 1 ? 's' : ''}.`;
-        } else if (group.key === 'project_hours') {
-          t.description = `Totaliser ${t.target} heures planifiées sur vos projets.`;
-        } else if (group.key === 'recurring') {
-          t.description = `Avoir ${t.target} tâche${t.target > 1 ? 's' : ''} récurrente${t.target > 1 ? 's' : ''} activée${t.target > 1 ? 's' : ''}.`;
-        } else if (group.key === 'deadlines') {
-          t.description = `Avoir ${t.target} tâche${t.target > 1 ? 's' : ''} ou projet${t.target > 1 ? 's' : ''} avec deadline.`;
-        } else if (group.key === 'early') {
-          t.description = `Terminer ${t.target} tâche${t.target > 1 ? 's' : ''} commençant avant 7h.`;
-        } else if (group.key === 'night') {
-          t.description = `Terminer ${t.target} tâche${t.target > 1 ? 's' : ''} commençant après 22h.`;
-        } else if (group.key === 'special') {
-          if (t.id === 'long_4h') t.description = 'Créer ou compléter une tâche fixe d\u00e9gagée durant au moins 4 heures.';
-          else if (t.id === 'long_8h') t.description = 'Créer ou compléter une tâche fixe d\u00e9gagée durant au moins 8 heures.';
-          else t.description = 'Objectif spécial à atteindre.';
-        } else {
-          t.description = 'Objectif: ' + (t.target || '—');
-        }
-      }
-    });
-  });
+  const [earned, setEarned] = useState({});
+  const [group, setGroup] = useState(null);
 
   useEffect(() => {
-    const syncTrophies = async () => {
+    (async () => {
       try {
         const raw = await AsyncStorage.getItem(TROPHY_KEY);
-        const saved = raw ? JSON.parse(raw) : {};
-        const updated = { ...saved };
+        const updated = raw ? JSON.parse(raw) : {};
         let changed = false;
-
-        groupedTrophies.forEach(group => {
-          const value = group.getter();
-          group.tiers.forEach(tier => {
-            const earned = value >= tier.target;
-            if (earned && !saved[tier.id]) {
-              updated[tier.id] = { earnedAt: new Date().toISOString() };
-              changed = true;
-            }
-            if (!earned && saved[tier.id]) {
-              updated[tier.id] = saved[tier.id];
-            }
+        GROUPS.forEach(g => {
+          const v = g.get(totals, streak);
+          g.targets.forEach(target => {
+            const id = `${g.key}_${target}`;
+            if (v >= target && !updated[id]) { updated[id] = { earnedAt: new Date().toISOString() }; changed = true; }
           });
         });
-
         if (changed) await AsyncStorage.setItem(TROPHY_KEY, JSON.stringify(updated));
-        setTrophiesState(updated);
-      } catch (e) { console.warn('trophy sync', e); }
-    };
-    syncTrophies();
-  }, [completedCount, projects.length, totalProjectHours, recurringCount, longTaskCount, deadlinesCount, earlyBirdCount, nightOwlCount]);
-
-  // UI state for trophy details modal
-  const [selectedGroup, setSelectedGroup] = useState(null);
-  const [showTrophyModal, setShowTrophyModal] = useState(false);
-  const [selectedTier, setSelectedTier] = useState(null);
-  // theme-aware colors
-  const theme = getTheme(!!isDarkMode);
-  const bg = theme.background;
-  const cardBg = theme.card;
-  const textColor = theme.text;
-  const subText = theme.subText;
+        setEarned(updated);
+      } catch (_) {}
+    })();
+  }, [totals, streak.best]);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: bg }]}> 
-      <Text style={[styles.mainTitle, { color: textColor }]}>Statistiques</Text>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
+      <Txt variant="display">Progrès</Txt>
 
-      <View style={[styles.levelCard, { backgroundColor: cardBg }] }>
-        <View style={styles.outerCircle}>
-          <View style={styles.innerCircle}>
-            <Text style={[styles.levelNumber, { color: theme.primary }]}>{level}</Text>
-            <Text style={styles.levelLabel}>NIVEAU</Text>
+      {/* Niveau */}
+      <Card style={{ marginTop: space.lg }}>
+        <View style={styles.levelRow}>
+          <View style={[styles.levelBadge, { backgroundColor: t.accentSoft }]}>
+            <Txt variant="title" color={t.accent}>{lvl.level}</Txt>
+          </View>
+          <View style={{ flex: 1, marginLeft: space.lg }}>
+            <Txt variant="small" muted>Niveau {lvl.level}</Txt>
+            <Txt variant="heading">{levelTitle(lvl.level)}</Txt>
           </View>
         </View>
-        <Text style={[styles.xpText, { color: subText }]}>{xp} / 10 tâches pour le niveau {level + 1}</Text>
-        <View style={[styles.progressBarBg, { backgroundColor: isDarkMode ? theme.card : theme.border }]}>
-          <View style={[styles.progressBarFill, { width: `${xp * 10}%`, backgroundColor: theme.primary }]} />
-        </View>
+        <ProgressBar value={lvl.into / lvl.needed} style={{ marginTop: space.lg }} height={6} />
+        <Txt variant="small" muted style={{ marginTop: space.sm }}>{lvl.needed - lvl.into} XP avant le niveau {lvl.level + 1}</Txt>
+      </Card>
+
+      {/* Série + aujourd'hui */}
+      <View style={styles.tiles}>
+        <Card style={styles.tile}>
+          <Icon name="zap" size={18} color={streak.current ? t.accent : t.textFaint} />
+          <Txt variant="display" style={{ marginTop: space.sm }}>{streak.current}</Txt>
+          <Txt variant="small" muted>jour{streak.current > 1 ? 's' : ''} d'affilée · record {streak.best}</Txt>
+        </Card>
+        <Card style={styles.tile}>
+          <Icon name="target" size={18} color={todayAct.pomodoros >= goal ? t.success : t.textFaint} />
+          <Txt variant="display" style={{ marginTop: space.sm }}>
+            {todayAct.pomodoros}<Txt variant="heading" muted>/{goal}</Txt>
+          </Txt>
+          <Txt variant="small" muted>{todayAct.pomodoros >= goal ? 'journée validée' : 'sessions aujourd\'hui'}</Txt>
+        </Card>
       </View>
 
-      <Text style={styles.sectionTitle}>Répartition Projets</Text>
-      <View style={[styles.chartCard, { backgroundColor: cardBg }]}> 
-        {projects.length > 0 ? (
-          <View>
-            <View style={styles.segmentedBar}>
-              {projects.map((p, i) => (
-                <View key={p.id} style={{ flex: parseFloat(p.totalHours), backgroundColor: i % 2 === 0 ? theme.primary : theme.success, borderRightWidth: 1, borderColor: theme.white }} />
-              ))}
-            </View>
-            {projects.map((p, i) => (
-              <View key={p.id} style={styles.legendItem}>
-                <View style={[styles.dot, { backgroundColor: i % 2 === 0 ? theme.primary : theme.success }]} />
-                <Text style={styles.legendText}>{p.text} ({p.totalHours}h)</Text>
+      {/* Semaine */}
+      <Card style={{ marginTop: space.md }}>
+        <View style={styles.cardHead}>
+          <Txt variant="bodyStrong">7 derniers jours</Txt>
+          <Txt variant="caption" muted>{formatDuration(weekFocus)} de focus</Txt>
+        </View>
+        <View style={styles.chart}>
+          {week.map(d => {
+            const ok = d.pomodoros >= goal;
+            return (
+              <View key={d.date} style={styles.chartCol}>
+                <View style={[styles.track, { backgroundColor: t.surfaceAlt }]}>
+                  <View style={[styles.bar, { height: `${Math.max(d.focusMin ? 4 : 0, (d.focusMin / maxMin) * 100)}%`, backgroundColor: ok ? t.success : t.accent }]} />
+                </View>
+                <Txt variant="small" color={d.date === today ? t.accent : t.textFaint} style={{ marginTop: 6, fontWeight: '600' }}>
+                  {DAY_LETTERS[parseYmd(d.date).getDay()]}
+                </Txt>
               </View>
-            ))}
-          </View>
-        ) : <Text style={[styles.empty, { color: subText }]}>Aucun projet actif.</Text>}
+            );
+          })}
+        </View>
+      </Card>
+
+      {/* Totaux */}
+      <View style={styles.tiles}>
+        {[
+          ['clock', formatDuration(totals.focusMin), 'de focus au total'],
+          ['check-circle', totals.tasks + totals.slots, 'tâches et sessions'],
+        ].map(([icon, value, label]) => (
+          <Card key={label} style={styles.tile}>
+            <Icon name={icon} size={18} color={t.textFaint} />
+            <Txt variant="title" style={{ marginTop: space.sm }}>{value}</Txt>
+            <Txt variant="small" muted>{label}</Txt>
+          </Card>
+        ))}
       </View>
 
-      <Text style={styles.sectionTitle}>Trophées</Text>
-      <View style={[styles.chartCard, { backgroundColor: cardBg }]}>
-        {groupedTrophies.map(group => {
-          const value = group.getter();
-          const tiers = group.tiers;
-          let highest = -1;
-          tiers.forEach((t, i) => { if (value >= t.target) highest = i; });
-          const next = tiers[highest + 1];
-          const progress = next ? Math.min(100, Math.round((value / next.target) * 100)) : 100;
-          const highestTier = highest >= 0 ? tiers[highest] : null;
-          const earnedAt = highestTier && trophiesState && trophiesState[highestTier.id] ? trophiesState[highestTier.id].earnedAt : null;
-
+      {/* Badges */}
+      <Txt variant="overline" muted style={styles.section}>Badges</Txt>
+      <Card padded={false}>
+        {GROUPS.map((g, i) => {
+          const v = g.get(totals, streak);
+          const reached = g.targets.filter(x => v >= x);
+          const next = g.targets.find(x => v < x);
+          const prev = reached.length ? reached[reached.length - 1] : 0;
+          const progress = next ? (v - prev) / (next - prev) : 1;
+          const unlocked = reached.length > 0;
           return (
-            <TouchableOpacity key={group.key} style={{marginBottom:14}} onPress={() => { setSelectedGroup(group); setShowTrophyModal(true); }}>
-              <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:6}}>
-                <View style={{flexDirection:'row', alignItems:'center'}}>
-                  <Text style={{fontSize:20, marginRight:10}}>{highest >= 0 ? '🏆' : '🔒'}</Text>
-                  <View>
-                    <Text style={{fontWeight:'700', color: textColor}}>{group.label}</Text>
-                    <Text style={{color: subText, fontSize:12}}>{highestTier ? `Palier: ${highestTier.title}` : `Objectif: ${tiers[0].title}`}</Text>
+            <View key={g.key}>
+              {i > 0 ? <Divider inset={68} /> : null}
+              <Pressable onPress={() => setGroup(g)} style={({ pressed }) => [styles.badgeRow, pressed && { opacity: 0.7 }]}>
+                <View style={[styles.badgeIcon, { backgroundColor: unlocked ? t.accentSoft : t.surfaceAlt }]}>
+                  <Icon name={g.icon} size={18} color={unlocked ? t.accent : t.textFaint} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={styles.cardHead}>
+                    <Txt variant="bodyStrong" color={unlocked ? t.text : t.textMuted}>{g.label}</Txt>
+                    <Txt variant="caption" muted>{next ? `${v}/${next}${g.unit}` : 'Max'}</Txt>
                   </View>
+                  <ProgressBar value={progress} style={{ marginTop: 6 }} color={unlocked ? t.accent : t.textFaint} />
                 </View>
-                <Text style={{fontSize:12, color: subText}}>{earnedAt ? new Date(earnedAt).toLocaleDateString() : (next ? `${value}/${next.target}` : `${value}`)}</Text>
-              </View>
-
-                <View style={{height:8, backgroundColor: theme.card, borderRadius:6, overflow:'hidden'}}>
-                  <View style={{height:'100%', width: `${progress}%`, backgroundColor: theme.primary }} />
-                </View>
-            </TouchableOpacity>
+              </Pressable>
+            </View>
           );
         })}
-      </View>
+      </Card>
+      <Txt variant="small" faint style={{ marginTop: space.md, textAlign: 'center' }}>
+        +10 XP par tâche ou session de projet · +10 XP par session de focus · +50 XP par projet terminé
+      </Txt>
 
-      <Modal visible={showTrophyModal} transparent animationType="fade">
-        <View style={{flex:1, backgroundColor:'rgba(0,0,0,0.5)', justifyContent:'center', padding:20}}>
-          <View style={{backgroundColor: cardBg, borderRadius:12, padding:16, maxHeight:'80%'}}>
-            <Text style={{fontWeight:'700', fontSize:18, marginBottom:8, color: textColor}}>{selectedGroup ? selectedGroup.label : ''}</Text>
-            <ScrollView>
-              {selectedGroup && selectedGroup.tiers.map(t => {
-                const earned = trophiesState && trophiesState[t.id];
-                return (
-                  <TouchableOpacity key={t.id} onPress={() => { setSelectedTier(t); }}>
-                    <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', paddingVertical:8, borderBottomWidth:1, borderColor: theme.border}}>
-                      <View>
-                        <Text style={{fontWeight:'700', color: textColor}}>{t.title} {t.target && typeof t.target === 'number' ? (t.title.toString().match(/h/i) ? '' : '') : ''}</Text>
-                        <Text style={{color: subText, fontSize:12}}>Objectif: {t.target}</Text>
-                      </View>
-                      <View style={{alignItems:'flex-end'}}>
-                        <Text style={{fontSize:16}}>{earned ? '🏆' : '🔒'}</Text>
-                        <Text style={{fontSize:11, color: subText}}>{earned ? new Date(earned.earnedAt).toLocaleString() : ''}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-
-              {selectedTier && (
-                <View style={{marginTop:12, padding:12, backgroundColor: theme.card, borderRadius:8}}>
-                  <Text style={{fontWeight:'700', color: textColor, marginBottom:6}}>{selectedTier.title}</Text>
-                  <Text style={{color: subText}}>{selectedTier.description}</Text>
-                </View>
-              )}
-            </ScrollView>
-            <TouchableOpacity onPress={() => { setShowTrophyModal(false); setSelectedGroup(null); }} style={{marginTop:12, backgroundColor: theme.primary, padding:10, borderRadius:8, alignItems:'center'}}>
-              <Text style={{color: theme.white, fontWeight:'700'}}>Fermer</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <Sheet visible={!!group} onClose={() => setGroup(null)} title={group ? group.label : ''}>
+        {group && group.targets.map((target, i) => {
+          const e = earned[`${group.key}_${target}`];
+          const ok = group.get(totals, streak) >= target;
+          return (
+            <View key={target}>
+              {i > 0 ? <Divider /> : null}
+              <View style={styles.tierRow}>
+                <Icon name={ok ? 'award' : 'lock'} size={18} color={ok ? t.accent : t.textFaint} />
+                <Txt variant="bodyStrong" style={{ flex: 1, marginLeft: space.md }} color={ok ? t.text : t.textMuted}>{target}{group.unit}</Txt>
+                <Txt variant="caption" muted>{ok && e ? new Date(e.earnedAt).toLocaleDateString('fr-FR') : ok ? 'Obtenu' : 'À débloquer'}</Txt>
+              </View>
+            </View>
+          );
+        })}
+      </Sheet>
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  mainTitle: { fontSize: 26, fontWeight: '800', marginBottom: 20 },
-  levelCard: { padding: 25, borderRadius: 24, alignItems: 'center', elevation: 4, marginBottom: 25 },
-  outerCircle: { width: 110, height: 110, borderRadius: 55, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  innerCircle: { width: 90, height: 90, borderRadius: 45, elevation: 2, justifyContent: 'center', alignItems: 'center' },
-  levelNumber: { fontSize: 32, fontWeight: 'bold' },
-  levelLabel: { fontSize: 10, fontWeight: 'bold' },
-  xpText: { fontSize: 13, marginBottom: 8 },
-  progressBarBg: { width: '100%', height: 6, borderRadius: 3, overflow: 'hidden' },
-  progressBarFill: { height: '100%' },
-  sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 15 },
-  chartCard: { padding: 20, borderRadius: 20, marginBottom: 25 },
-  trophyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
-  segmentedBar: { height: 18, borderRadius: 9, flexDirection: 'row', overflow: 'hidden', marginBottom: 15 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  dot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  legendText: { fontSize: 14 },
-  empty: { fontStyle: 'italic', textAlign: 'center' }
+  content: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: 60 },
+  levelRow: { flexDirection: 'row', alignItems: 'center' },
+  levelBadge: { width: 52, height: 52, borderRadius: radius.lg, alignItems: 'center', justifyContent: 'center' },
+  tiles: { flexDirection: 'row', gap: space.md, marginTop: space.md },
+  tile: { flex: 1 },
+  cardHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  chart: { flexDirection: 'row', height: 130, marginTop: space.lg },
+  chartCol: { flex: 1, alignItems: 'center' },
+  track: { flex: 1, width: 14, borderRadius: 7, justifyContent: 'flex-end', overflow: 'hidden' },
+  bar: { width: '100%', borderRadius: 7 },
+  section: { marginTop: space.xl, marginBottom: space.sm },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', padding: space.lg },
+  badgeIcon: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', marginRight: space.md },
+  tierRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14 },
 });
 
 export default AchievementsScreen;

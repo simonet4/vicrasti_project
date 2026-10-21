@@ -17,6 +17,8 @@ allprojects {
     google()
     mavenCentral()
     maven { url 'https://www.jitpack.io' }
+    // Notifee ship its native core in node_modules rather than on Maven
+    maven { url "$rootDir/../node_modules/@notifee/react-native/android/libs" }
   }
 }
 

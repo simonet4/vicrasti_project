@@ -1,79 +1,63 @@
+import { createContext, useContext } from 'react';
 import { StyleSheet } from 'react-native';
 
-// Centralized light/dark theme tokens
-export const theme = {
-  light: {
-    background: '#F8F9FA',
-    card: '#FFFFFF',
-    text: '#111827',
-    subText: '#6B7280',
-    primary: '#007bff',
-    success: '#00c853',
-    danger: '#ff5252',
-    border: '#E6E7E8',
-    modalOverlay: 'rgba(0,0,0,0.5)',
-    modalContent: '#FFFFFF',
-    inputBg: '#FAFAFA',
-    white: '#FFFFFF',
-    taskBg: '#FDFDFD',
-    header: '#FFFFFF'
-  },
-  dark: {
-    background: '#0B0B0B',
-    card: '#121212',
-    text: '#FFFFFF',
-    subText: '#BDBDBD',
-    primary: '#3EA6FF',
-    success: '#32D672',
-    danger: '#FF6B6B',
-    border: '#1F1F1F',
-    modalOverlay: 'rgba(0,0,0,0.6)',
-    modalContent: '#151515',
-    inputBg: '#171717',
-    white: '#FFFFFF',
-    taskBg: '#161616',
-    header: '#0F0F0F'
-  }
+// Charte : fond légèrement chaud, texte quasi noir, un seul accent (indigo).
+// Les couleurs d'état ne servent qu'à signaler (retard, réussite).
+const light = {
+  bg: '#F6F6F3',
+  surface: '#FFFFFF',
+  surfaceAlt: '#EFEFEB',
+  text: '#18181B',
+  textMuted: '#6B6B73',
+  textFaint: '#A3A3AA',
+  border: '#E6E6E1',
+  accent: '#4F46E5',
+  accentSoft: '#ECEBFD',
+  onAccent: '#FFFFFF',
+  success: '#15955A',
+  successSoft: '#E5F4EC',
+  warning: '#C97A12',
+  warningSoft: '#FBF1E1',
+  danger: '#D33B3B',
+  dangerSoft: '#FBEAEA',
+  overlay: 'rgba(16,16,20,0.42)',
 };
 
-export const getTheme = (isDark) => (isDark ? theme.dark : theme.light);
+const dark = {
+  bg: '#0C0C0E',
+  surface: '#17171A',
+  surfaceAlt: '#212125',
+  text: '#F4F4F5',
+  textMuted: '#A1A1AA',
+  textFaint: '#66666E',
+  border: '#27272B',
+  accent: '#8B87F7',
+  accentSoft: '#23223A',
+  onAccent: '#FFFFFF',
+  success: '#3CC683',
+  successSoft: '#142A1E',
+  warning: '#EBA24A',
+  warningSoft: '#2E2414',
+  danger: '#F06767',
+  dangerSoft: '#321A1A',
+  overlay: 'rgba(0,0,0,0.6)',
+};
 
-export const globalStyles = StyleSheet.create({
-  // Conteneurs
-  container: { flex: 1 },
-  safeArea: { flex: 1 },
-  row: { flexDirection: 'row', alignItems: 'center' },
-  
-  // Textes
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginVertical: 15 },
-  subtitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
-  
-  // Modals (Fenêtres)
-  modalOverlay: { 
-    flex: 1, 
-    justifyContent: 'center', 
-    padding: 20 
-  },
-  modalContent: { 
-    padding: 20, 
-    borderRadius: 15, 
-    elevation: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-  },
-  
-  // Boutons
-  btn: { padding: 12, borderRadius: 8, alignItems: 'center', marginVertical: 5 },
-  btnText: { fontWeight: 'bold', fontSize: 16 },
-  
-  // Inputs
-  input: { 
-    borderWidth: 1, 
-    padding: 12, 
-    borderRadius: 8, 
-    fontSize: 16, 
-    marginBottom: 15,
-  },
+export const getTheme = (isDark) => ({ ...(isDark ? dark : light), isDark: !!isDark });
+
+export const ThemeContext = createContext(getTheme(false));
+export const useTheme = () => useContext(ThemeContext);
+
+export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
+export const radius = { sm: 8, md: 12, lg: 16, xl: 24, pill: 999 };
+
+export const type = StyleSheet.create({
+  display: { fontSize: 30, fontWeight: '700', letterSpacing: -0.6 },
+  title: { fontSize: 21, fontWeight: '700', letterSpacing: -0.3 },
+  heading: { fontSize: 17, fontWeight: '600', letterSpacing: -0.2 },
+  body: { fontSize: 15, lineHeight: 21 },
+  bodyStrong: { fontSize: 15, fontWeight: '600', lineHeight: 21 },
+  caption: { fontSize: 13, lineHeight: 18 },
+  small: { fontSize: 11, lineHeight: 15 },
+  overline: { fontSize: 11, fontWeight: '700', letterSpacing: 1.1, textTransform: 'uppercase' },
 });

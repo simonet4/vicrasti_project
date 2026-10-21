@@ -10,15 +10,19 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.3",
     "@notifee/react-native": "^9.1.8",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "base-64": "^1.0.0",
     "denodeify": "^1.2.0",
     "expo": "^54.0.33",
     "expo-document-picker": "~14.0.8",
+    "expo-navigation-bar": "~5.0.10",
     "ical.js": "^2.2.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-native": "^0.81.5",
+    "react-native": "0.81.5",
+    "react-native-safe-area-context": "~5.6.0",
     "react-native-web": "^0.21.0"
   },
   "optionalDependencies": {

@@ -3,3 +3,11 @@ node_modules/
 web-build/
 dist/
 .vscode/
+
+# IDE
+.idea/
+*.iml
+
+# Expo / Android
+.expo-shared/
+android/build/

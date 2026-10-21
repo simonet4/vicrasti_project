@@ -1,189 +1,139 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { getTheme } from '../styles/globalStyles';
+import React, { useState, useMemo } from 'react';
+import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { useTheme, space } from '../styles/globalStyles';
+import { Txt, IconButton, Card, Check, Divider, Button, Icon } from '../components/ui';
+import { todayYmd, buildMonthMatrix, formatDayLabel } from '../logic/dates';
+import { getFixedForDay, sortByTime } from '../logic/tasks';
 
-const CalendarScreen = ({ tasks = [], onSelectDate, isDarkMode = false, onToggle }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
-  const formatLocalYmd = (d) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  };
-  const [selectedDate, setSelectedDate] = useState(formatLocalYmd(new Date()));
+const CalendarScreen = ({ tasks = [], onToggle, onOpenDay }) => {
+  const t = useTheme();
+  const today = todayYmd();
+  const [month, setMonth] = useState(new Date());
+  const [selected, setSelected] = useState(today);
 
-  const nextMonth = () => { const d = new Date(currentMonth); d.setMonth(d.getMonth()+1); setCurrentMonth(d); };
-  const prevMonth = () => { const d = new Date(currentMonth); d.setMonth(d.getMonth()-1); setCurrentMonth(d); };
+  const shift = (n) => setMonth(new Date(month.getFullYear(), month.getMonth() + n, 1));
+  const matrix = useMemo(() => buildMonthMatrix(month), [month]);
 
-  const parseYmd = (ymd) => {
-    const parts = ymd.split('-');
-    return new Date(parseInt(parts[0],10), parseInt(parts[1],10)-1, parseInt(parts[2],10));
-  };
+  const deadlines = useMemo(() => {
+    const map = {};
+    tasks.filter(p => p.type === 'PROJECT' && !p.done && p.deadline && !p.quick).forEach(p => {
+      (map[p.deadline] = map[p.deadline] || []).push(p);
+    });
+    return map;
+  }, [tasks]);
 
-  const occursOnDate = (task, ymd) => {
-    if (!task) return false;
-    if (task.dueDate === ymd) return true;
-    const r = task.recurrence;
-    if (!r || !r.type || r.type === 'none') return false;
-    const d = parseYmd(ymd);
-    let start = task.dueDate ? parseYmd(task.dueDate) : null;
-    if (!start && task.createdAt) start = parseYmd(task.createdAt.slice(0,10));
-    if (start && d < start) return false;
-    if (r.type === 'daily') return true;
-    if (r.type === 'weekly') {
-      const dow = (d.getDay() + 6) % 7;
-      return Array.isArray(r.days) && r.days.includes(dow);
-    }
-    return false;
-  };
+  const counts = useMemo(() => {
+    const map = {};
+    matrix.flat().forEach(d => {
+      const items = getFixedForDay(tasks, d.ymd);
+      map[d.ymd] = { n: items.length, done: items.filter(i => i.done).length };
+    });
+    return map;
+  }, [tasks, matrix]);
 
-  const getTasksForDate = (ymd) => (tasks || []).filter(t => occursOnDate(t, ymd));
-  const selectedTasks = getTasksForDate(selectedDate);
-
-  const getTimeForTask = (t) => {
-    if (!t) return '';
-    if (t.startTime || t.endTime) {
-      if (t.startTime && t.endTime) return `${t.startTime} - ${t.endTime}`;
-      return t.startTime || t.endTime || '';
-    }
-    if (t.recurrence && t.recurrence.time) return t.recurrence.time;
-    return '';
-  };
-
-  const buildMonthMatrix = (date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const startDay = (firstDay.getDay() + 6) % 7;
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const prevMonthDays = new Date(year, month, 0).getDate();
-
-    const matrix = [];
-    let week = [];
-    for (let i = 0; i < startDay; i++) {
-      const d = new Date(year, month - 1, prevMonthDays - (startDay - 1 - i));
-      week.push({ date: d, inMonth: false, ymd: formatLocalYmd(d) });
-    }
-    for (let day = 1; day <= daysInMonth; day++) {
-      const d = new Date(year, month, day);
-      week.push({ date: d, inMonth: true, ymd: formatLocalYmd(d) });
-      if (week.length === 7) { matrix.push(week); week = []; }
-    }
-    let nextDay = 1;
-    while (week.length > 0 && week.length < 7) {
-      const d = new Date(year, month + 1, nextDay++);
-      week.push({ date: d, inMonth: false, ymd: formatLocalYmd(d) });
-    }
-    if (week.length > 0) matrix.push(week);
-    return matrix;
-  };
-
-  const theme = getTheme(!!isDarkMode);
-  const textColor = theme.text;
-  const containerStyle = { backgroundColor: theme.background };
+  const items = useMemo(() => getFixedForDay(tasks, selected).sort(sortByTime), [tasks, selected]);
+  const dayDeadlines = deadlines[selected] || [];
 
   return (
-    <ScrollView style={[styles.container, containerStyle]} contentContainerStyle={{ paddingBottom: 80 }}>
-      <Text style={[styles.title, {color: textColor}]}>Calendrier v6</Text>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content}>
+      <Txt variant="display">Agenda</Txt>
 
-      <View style={styles.header}>
-        <TouchableOpacity onPress={prevMonth} style={[styles.navBtn, { backgroundColor: theme.card }]}><Text style={[styles.navText, { color: theme.primary }]}>◀</Text></TouchableOpacity>
-        <Text style={[styles.monthText, {color: textColor}]}>{currentMonth.toLocaleDateString('fr-FR', {month:'long', year:'numeric'})}</Text>
-        <TouchableOpacity onPress={nextMonth} style={[styles.navBtn, { backgroundColor: theme.card }]}><Text style={[styles.navText, { color: theme.primary }]}>▶</Text></TouchableOpacity>
+      <View style={styles.monthRow}>
+        <Pressable onPress={() => { setMonth(new Date()); setSelected(today); }}>
+          <Txt variant="heading" style={{ textTransform: 'capitalize' }}>
+            {month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+          </Txt>
+        </Pressable>
+        <View style={{ flexDirection: 'row' }}>
+          <IconButton name="chevron-left" onPress={() => shift(-1)} />
+          <IconButton name="chevron-right" onPress={() => shift(1)} />
+        </View>
       </View>
 
-      <View style={styles.weekHeader}>
-        {['L','M','M','J','V','S','D'].map((d,i) => <Text key={i} style={[styles.dayName, { color: theme.subText }]}>{d}</Text>)}
-      </View>
-
-      <View style={[styles.calendarGrid, {backgroundColor: theme.card}] }>
-        {buildMonthMatrix(currentMonth).map((week, i) => (
-          <View key={i} style={styles.weekRow}>
-            {week.map((day, j) => {
-              const count = getTasksForDate(day.ymd).length;
-              const isSelected = day.ymd === selectedDate;
-              const isToday = day.ymd === new Date().toISOString().slice(0,10);
-
+      <Card style={{ paddingHorizontal: space.sm }}>
+        <View style={styles.week}>
+          {['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d, i) => <Txt key={i} variant="small" faint style={styles.dayName}>{d}</Txt>)}
+        </View>
+        {matrix.map((week, i) => (
+          <View key={i} style={styles.week}>
+            {week.map(day => {
+              const c = counts[day.ymd] || { n: 0, done: 0 };
+              const sel = day.ymd === selected;
+              const isT = day.ymd === today;
+              const allDone = c.n > 0 && c.done === c.n;
               return (
-                <TouchableOpacity 
-                  key={j} 
-                  onPress={() => { setSelectedDate(day.ymd); }}
-                  style={[
-                    styles.dayCell, 
-                    !day.inMonth && styles.dayOut, 
-                    isSelected && { backgroundColor: theme.primary },
-                    !isSelected && isToday && { borderWidth: 1, borderColor: theme.primary },
-                    !isSelected && count > 0 && { backgroundColor: theme.taskBg }
-                  ]}>
-                  <Text style={[
-                    styles.dayText, 
-                    !day.inMonth && styles.outText,
-                    !day.inMonth && { color: theme.subText },
-                    isSelected && { color: theme.white, fontWeight:'bold' },
-                    !isSelected && { color: theme.text }
-                  ]}>{day.date.getDate()}</Text>
-                  {count > 0 && <View style={[styles.dot, isSelected && {backgroundColor: theme.white}, { backgroundColor: theme.primary }]} />}
-                </TouchableOpacity>
+                <Pressable key={day.ymd} onPress={() => setSelected(day.ymd)} onLongPress={() => onOpenDay(day.ymd)} style={styles.cell}>
+                  <View style={[styles.circle, sel && { backgroundColor: t.accent }]}>
+                    <Txt
+                      color={sel ? t.onAccent : isT ? t.accent : day.inMonth ? t.text : t.textFaint}
+                      style={{ fontWeight: sel || isT ? '700' : '400' }}
+                    >
+                      {day.date.getDate()}
+                    </Txt>
+                  </View>
+                  <View style={styles.dots}>
+                    {c.n > 0 ? <View style={[styles.dot, { backgroundColor: allDone ? t.success : t.textFaint }]} /> : null}
+                    {deadlines[day.ymd] ? <View style={[styles.dot, { backgroundColor: t.danger }]} /> : null}
+                  </View>
+                </Pressable>
               );
             })}
           </View>
         ))}
+      </Card>
+
+      <View style={styles.dayHeader}>
+        <Txt variant="heading" style={{ textTransform: 'capitalize' }}>{formatDayLabel(selected, today)}</Txt>
+        <Button title="Voir la journée" variant="ghost" size="sm" onPress={() => onOpenDay(selected)} />
       </View>
 
-      <View style={styles.taskPreview}>
-        <Text style={[styles.previewTitle, {color: textColor}]}>Tâches du {new Date(selectedDate).toLocaleDateString()}</Text>
-        {selectedTasks.length === 0 ? (
-          <Text style={[styles.noTaskText, { color: theme.subText }]}>Aucune tâche.</Text>
-        ) : (
-          selectedTasks.map((item) => (
-            <TouchableOpacity key={item.id} onPress={() => { if (onToggle) onToggle(item.id, item.type, item.parentId); }} style={[styles.miniTask, {backgroundColor: theme.card, borderLeftColor: theme.primary}]}>
-              <View style={styles.taskRow}>
-                <Text style={{color: item.done ? theme.subText : theme.text, textDecorationLine: item.done ? 'line-through' : 'none', flex:1}}>
-                  {item.done ? '✅' : '⬜'} {item.text}
-                </Text>
-                <Text style={[styles.taskTime, { color: theme.subText }]}>{getTimeForTask(item)}</Text>
+      {dayDeadlines.length === 0 && items.length === 0 ? (
+        <Txt muted>Rien de prévu ce jour-là.</Txt>
+      ) : (
+        <Card padded={false}>
+          {dayDeadlines.map((p, i) => (
+            <View key={p.id}>
+              {i > 0 ? <Divider inset={space.lg} /> : null}
+              <View style={styles.row}>
+                <Icon name="flag" size={18} color={t.danger} />
+                <Txt style={{ flex: 1, marginLeft: space.md }} numberOfLines={1}>Deadline · {p.text}</Txt>
               </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </View>
-
-      {onSelectDate && (
-        <View style={styles.confirmRow}>
-          <TouchableOpacity style={[styles.confirmBtn, { backgroundColor: theme.primary }]} onPress={() => { if (onSelectDate) onSelectDate(selectedDate); }}>
-            <Text style={[styles.confirmText, { color: theme.white }]}>Confirmer</Text>
-          </TouchableOpacity>
-        </View>
+            </View>
+          ))}
+          {items.map((item, i) => (
+            <View key={item.id}>
+              {i > 0 || dayDeadlines.length ? <Divider inset={space.lg} /> : null}
+              <View style={styles.row}>
+                <Check checked={item.done} onPress={() => onToggle(item)} size={22} />
+                <View style={{ flex: 1, marginLeft: space.md }}>
+                  <Txt color={item.done ? t.textFaint : t.text} style={item.done && { textDecorationLine: 'line-through' }} numberOfLines={1}>
+                    {item.text}
+                  </Txt>
+                  {item.location ? <Txt variant="small" muted numberOfLines={1}>{item.location}</Txt> : null}
+                </View>
+                <Txt variant="caption" muted style={{ fontVariant: ['tabular-nums'] }}>
+                  {item.startTime ? `${item.startTime}–${item.endTime || ''}` : 'Journée'}
+                </Txt>
+              </View>
+            </View>
+          ))}
+        </Card>
       )}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 10 },
-  title: { fontSize: 24, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingHorizontal: 20 },
-  navBtn: { padding: 10, borderRadius: 5 },
-  navText: { fontSize: 18, fontWeight: 'bold' },
-  monthText: { fontSize: 18, fontWeight: 'bold', textTransform: 'capitalize' },
-  weekHeader: { flexDirection: 'row', marginBottom: 5 },
-  dayName: { flex: 1, textAlign: 'center', fontWeight: 'bold' },
-  calendarGrid: { borderRadius: 10, padding: 5, elevation: 2 },
-  weekRow: { flexDirection: 'row', height: 45 },
-  dayCell: { flex: 1, justifyContent: 'center', alignItems: 'center', margin: 2, borderRadius: 5 },
-  dayOut: { opacity: 0.3 },
-  outText: { },
-  dayText: { fontSize: 14 },
-  dot: { width: 4, height: 4, borderRadius: 2, marginTop: 2 },
-  taskPreview: { marginTop: 20 },
-  previewTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 10 },
-  noTaskText: { fontStyle: 'italic' },
-  miniTask: { padding: 10, marginBottom: 5, borderRadius: 5, borderLeftWidth: 3 },
-  confirmRow: { marginTop: 12, alignItems: 'center', marginBottom: 40 },
-  confirmBtn: { paddingVertical: 10, paddingHorizontal: 28, borderRadius: 8 },
-  confirmText: { fontWeight: 'bold' },
-  taskRow: { flexDirection: 'row', alignItems: 'center' },
-  taskTime: { marginLeft: 12, fontSize: 12 }
+  content: { paddingHorizontal: space.lg, paddingTop: space.md, paddingBottom: 60 },
+  monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.md, marginBottom: space.sm },
+  week: { flexDirection: 'row' },
+  dayName: { flex: 1, textAlign: 'center', marginBottom: space.xs },
+  cell: { flex: 1, alignItems: 'center', paddingVertical: 2 },
+  circle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  dots: { flexDirection: 'row', gap: 3, height: 6, marginTop: 1 },
+  dot: { width: 5, height: 5, borderRadius: 3 },
+  dayHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: space.xl, marginBottom: space.sm },
+  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 13, paddingHorizontal: space.lg },
 });
 
 export default CalendarScreen;
