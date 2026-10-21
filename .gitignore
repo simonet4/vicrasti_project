@@ -11,3 +11,8 @@ dist/
 # Expo / Android
 .expo-shared/
 android/build/
+
+# Signature release : ne jamais publier
+*.keystore
+!android/app/debug.keystore
+android/keystore.properties

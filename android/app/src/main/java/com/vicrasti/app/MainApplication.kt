@@ -1,4 +1,4 @@
-package com.victor.vicrastitodo
+package com.vicrasti.app
 
 import android.app.Application
 import android.content.res.Configuration

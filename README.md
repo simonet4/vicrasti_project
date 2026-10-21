@@ -45,7 +45,15 @@ Construite avec Expo / React Native. Toutes les données restent sur le téléph
 
 L'app cible **Android**. La partie iOS n'a pas été testée, et les notifications ne fonctionnent pas sur le web.
 
-## Installation
+## Installer l'application
+
+1. Sur ton téléphone Android, ouvre la page [Releases](https://github.com/simonet4/vicrasti_project/releases/latest) et télécharge le fichier `Vicrasti-<version>.apk`.
+2. Ouvre le fichier téléchargé. Android demande d'autoriser l'installation depuis cette source (ton navigateur ou ton gestionnaire de fichiers) : accepte.
+3. Lance Vicrasti et autorise les notifications, pour recevoir les rappels et l'alerte de fin de session.
+
+L'APK fonctionne sur les téléphones Android à processeur ARM, c'est-à-dire la quasi-totalité des téléphones récents. Les mises à jour s'installent par-dessus la version précédente, sans perdre tes données.
+
+## Développement
 
 ### Prérequis
 
@@ -71,7 +79,18 @@ npx expo run:android
 
 La première compilation prend plusieurs minutes. Ensuite, tant que tu ne modifies que du JavaScript, `npx expo start` suffit : le téléphone recharge le code depuis Metro.
 
-> Il s'agit d'une version de développement : elle charge son code depuis Metro sur le PC. Pour une app autonome, compile une version release (`cd android && ./gradlew assembleRelease`) ou utilise [EAS Build](https://docs.expo.dev/build/introduction/).
+> Il s'agit d'une version de développement : elle charge son code depuis Metro sur le PC.
+
+### Compiler une version release
+
+```bash
+cd android
+./gradlew app:assembleRelease -PreactNativeArchitectures=armeabi-v7a,arm64-v8a
+```
+
+L'APK est produit dans `android/app/build/outputs/apk/release/`. Il est signé avec la clé définie dans `android/keystore.properties`. Ce fichier et la clé ne sont pas dans le dépôt ; sans eux, la release est signée avec la clé de debug.
+
+Sous Windows, si la compilation échoue avec `Filename longer than 260 characters`, le chemin du projet est trop long. Compile depuis un chemin plus court (par exemple avec `subst`).
 
 ## Configuration
 

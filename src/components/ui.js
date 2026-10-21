@@ -1,7 +1,7 @@
 // Composants d'interface partagés : toute l'app passe par eux pour rester cohérente.
 import React from 'react';
 import {
-  View, Text, Pressable, Modal, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
+  View, Text, Pressable, Modal, StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StatusBar,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -191,6 +191,8 @@ export const Sheet = ({ visible, onClose, title, children, footer, scroll = true
   const Body = scroll ? ScrollView : View;
   return (
     <Modal visible={!!visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
+      {/* Une modale a sa propre fenêtre : on y réapplique le style de la barre d'état */}
+      <StatusBar barStyle={t.isDark ? 'light-content' : 'dark-content'} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: t.overlay }]} onPress={onClose} />
         <View style={[styles.sheet, { backgroundColor: t.surface, paddingBottom: insets.bottom + space.xl, maxHeight: '92%' }]}>

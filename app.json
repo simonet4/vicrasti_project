@@ -19,15 +19,10 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.victor.vicrastitodo" 
+      "package": "com.vicrasti.app"
     },
     "web": {
       "favicon": "./assets/icon.png"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "7635590f-285d-4a2a-9431-3d745cad64c5"
-      }
     }
   }
 }

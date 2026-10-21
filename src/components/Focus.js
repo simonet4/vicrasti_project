@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Modal, StyleSheet, Pressable } from 'react-native';
+import { View, Modal, StyleSheet, Pressable, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, space, radius } from '../styles/globalStyles';
 import { Txt, IconButton, Icon, Chip, Button, Check, ProgressBar } from './ui';
@@ -33,6 +33,7 @@ export const FocusScreen = ({ visible, onClose, pomo, settings, pendingTask, nex
 
   return (
     <Modal visible={!!visible} animationType="slide" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
+      <StatusBar barStyle={t.isDark ? 'light-content' : 'dark-content'} />
       <View style={[styles.root, { backgroundColor: t.bg, paddingTop: insets.top + space.sm, paddingBottom: insets.bottom + space.xxl }]}>
         <View style={styles.header}>
           <IconButton name="chevron-down" onPress={onClose} bg={t.surfaceAlt} />
@@ -118,7 +119,8 @@ const styles = StyleSheet.create({
   dot: { width: 7, height: 7, borderRadius: 4 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   task: { textAlign: 'center', marginTop: space.sm, paddingHorizontal: space.md },
-  timer: { fontSize: 88, fontWeight: '200', letterSpacing: -2, fontVariant: ['tabular-nums'], marginVertical: space.lg },
+  // lineHeight explicite : sinon celle du texte courant (21) rogne les chiffres
+  timer: { fontSize: 88, lineHeight: 104, fontWeight: '200', letterSpacing: -2, fontVariant: ['tabular-nums'], marginVertical: space.lg },
   step: { flexDirection: 'row', alignItems: 'center', borderRadius: radius.lg, padding: space.lg, marginTop: space.xxl, alignSelf: 'stretch' },
   bottom: { alignItems: 'stretch' },
   presets: { flexDirection: 'row', justifyContent: 'center', marginBottom: space.lg },
