@@ -47,7 +47,7 @@ L'app cible **Android**. La partie iOS n'a pas été testée, et les notificatio
 
 ## Installer l'application
 
-1. Sur ton téléphone Android, ouvre la page [Releases](https://github.com/simonet4/vicrasti_project/releases/latest) et télécharge le fichier `Vicrasti-<version>.apk`.
+1. Sur ton téléphone Android, **[télécharge Vicrasti.apk](https://github.com/simonet4/vicrasti_project/releases/latest/download/Vicrasti.apk)**. Ce lien pointe toujours vers la dernière version ; l'historique est sur la page [Releases](https://github.com/simonet4/vicrasti_project/releases).
 2. Ouvre le fichier téléchargé. Android demande d'autoriser l'installation depuis cette source (ton navigateur ou ton gestionnaire de fichiers) : accepte.
 3. Lance Vicrasti et autorise les notifications, pour recevoir les rappels et l'alerte de fin de session.
 
