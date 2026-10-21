@@ -8,7 +8,7 @@ import {
 } from '../logic/dates';
 import { useTheme, space, radius } from '../styles/globalStyles';
 import {
-  Txt, Icon, IconButton, Button, Card, Check, Divider, ProgressBar, SectionHeader, EmptyState, ActionSheet,
+  Txt, Icon, IconButton, Button, Card, Check, Divider, ProgressBar, SectionHeader, ActionSheet,
 } from '../components/ui';
 
 const DAY_LETTERS = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
@@ -230,7 +230,6 @@ const TodayScreen = ({
       </Pressable>,
     );
   });
-  if (!nowShown && blocks.length) rows.push(nowLine);
 
   return (
     <View style={{ flex: 1 }}>
@@ -332,14 +331,18 @@ const TodayScreen = ({
         )}
 
         {/* Planning */}
-        <SectionHeader title="Planning" />
-        {schedule.length === 0 ? (
-          <Card>
-            <EmptyState icon="sun" title="Journée libre" text="Ajoute une tâche ou un projet avec +, je m'occupe de le placer." />
-          </Card>
-        ) : (
-          <Card padded={false} style={{ overflow: 'hidden' }}>{rows}</Card>
-        )}
+        {/* Aujourd'hui, la carte « Maintenant » annonce déjà une journée vide */}
+        {schedule.length > 0 ? (
+          <>
+            <SectionHeader title="Planning" />
+            <Card padded={false} style={{ overflow: 'hidden' }}>{rows}</Card>
+          </>
+        ) : !isToday ? (
+          <>
+            <SectionHeader title="Planning" />
+            <Txt muted>Rien de prévu ce jour-là.</Txt>
+          </>
+        ) : null}
 
         {/* Projets */}
         {projects.length > 0 && (

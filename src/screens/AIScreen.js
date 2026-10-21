@@ -109,11 +109,11 @@ const AIScreen = ({ apiKey, todos, settings, todayActivity, onAddTasks, onSetPro
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <Txt variant="display">Coach</Txt>
-        <Txt muted style={{ marginTop: 2, marginBottom: space.lg }}>Ton assistant pour passer à l'action, propulsé par Claude.</Txt>
+        <Txt muted style={{ marginTop: 2, marginBottom: space.lg }}>Ton assistant pour passer à l'action, avec l'IA de ton choix.</Txt>
 
         {!apiKey ? (
           <Card>
-            <EmptyState icon="key" title="Connecte Claude" text="Ajoute ta clé API Claude dans les réglages pour activer le coach.">
+            <EmptyState icon="key" title="Connecte une IA" text="Ajoute une clé API dans les réglages : Mistral, Gemini, Claude, OpenAI, Groq…">
               <Button title="Ouvrir les réglages" icon="settings" variant="soft" onPress={onOpenSettings} style={{ marginTop: space.lg }} />
             </EmptyState>
           </Card>

@@ -26,7 +26,7 @@ Construite avec Expo / React Native. Toutes les données restent sur le téléph
 - Objectif quotidien de sessions de focus, et une **série** de jours consécutifs où il est atteint.
 - Niveaux et XP, graphique des 7 derniers jours, badges.
 
-**Coach IA** (optionnel, via l'API Claude)
+**Coach IA** (optionnel, avec la clé API de ton choix)
 - **Débloquer** : un conseil court et concret à partir de ton planning du jour et de ce qui te bloque.
 - **Planifier** : décris ce que tu as à faire, l'IA crée les tâches et projets sans chevaucher ton agenda.
 - **Découper** : transforme un projet en micro-étapes, la première faisable en moins de 2 minutes.
@@ -41,7 +41,7 @@ Construite avec Expo / React Native. Toutes les données restent sur le téléph
 - [Notifee](https://notifee.app) pour la notification de focus et les rappels planifiés
 - AsyncStorage pour le stockage local
 - [ical.js](https://github.com/kewisch/ical.js) pour les emplois du temps
-- API [Anthropic Messages](https://docs.anthropic.com) (appel HTTP direct) pour le coach
+- Appels HTTP directs aux API d'IA pour le coach (aucun SDK)
 
 L'app cible **Android**. La partie iOS n'a pas été testée, et les notifications ne fonctionnent pas sur le web.
 
@@ -98,7 +98,7 @@ Tout se règle depuis l'app, avec l'icône engrenage de l'écran Aujourd'hui :
 
 | Réglage | Usage |
 |---|---|
-| **Coach IA** | Clé API Claude, à créer sur [console.anthropic.com](https://console.anthropic.com). Sans clé, le reste de l'app fonctionne normalement. |
+| **Coach IA** | Clé API de n'importe quel fournisseur pris en charge (voir ci-dessous). Sans clé, le reste de l'app fonctionne normalement. |
 | **Journée** | Plage horaire où les sessions de projet peuvent être placées, et maximum d'heures de projet par jour. |
 | **Focus** | Durées des sessions et des pauses, objectif quotidien. |
 | **Rappels** | Délai avant une tâche, brief du matin, bilan du soir. |
@@ -124,11 +124,27 @@ src/
 android/                   Projet Android natif
 ```
 
+### Fournisseurs d'IA
+
+Colle n'importe laquelle de ces clés dans **Réglages → Coach IA**. Le fournisseur est reconnu au format de la clé (si le format ne suffit pas, l'app essaie Mistral puis Gemini ; tu peux aussi choisir le fournisseur à la main), puis l'app interroge sa liste de modèles et choisit un modèle rapide adapté. Tu peux imposer un modèle précis dans le même écran, et vérifier la clé avec « Tester la clé ».
+
+| Fournisseur | Format de la clé | Où la créer |
+|---|---|---|
+| Mistral | 32 caractères, sans préfixe | [console.mistral.ai](https://console.mistral.ai) |
+| Google Gemini | `AIza…` ou `AQ.…` | [aistudio.google.com](https://aistudio.google.com) |
+| Claude (Anthropic) | `sk-ant-…` | [console.anthropic.com](https://console.anthropic.com) |
+| OpenAI | `sk-…` | [platform.openai.com](https://platform.openai.com) |
+| Groq | `gsk_…` | [console.groq.com](https://console.groq.com) |
+| OpenRouter | `sk-or-…` | [openrouter.ai](https://openrouter.ai) |
+| Grok (xAI) | `xai-…` | [console.x.ai](https://console.x.ai) |
+
+Certains proposent une offre gratuite (Gemini et Groq notamment, au moment de l'écriture). Les conditions changent souvent : vérifie sur leur site.
+
 ## Données et confidentialité
 
 - Tâches, sessions et réglages sont stockés **uniquement sur le téléphone** (AsyncStorage). Aucun serveur.
-- La clé API Claude et les identifiants ICS sont aussi stockés sur le téléphone, **en clair**. Ne l'utilise pas sur un appareil partagé.
-- Le coach IA envoie ton planning du jour et ta demande à l'API d'Anthropic, uniquement quand tu l'utilises.
+- La clé API et les identifiants ICS sont aussi stockés sur le téléphone, **en clair**. Ne l'utilise pas sur un appareil partagé.
+- Le coach IA envoie ton planning du jour et ta demande au fournisseur d'IA de ta clé, uniquement quand tu l'utilises.
 
 ## Licence
 

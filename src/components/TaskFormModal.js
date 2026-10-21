@@ -93,7 +93,7 @@ const TaskFormModal = ({ visible, task, defaultDate, defaultType, todos, onSave,
   const aiSplit = async () => {
     if (!form.text.trim()) { Alert.alert('Titre requis', 'Donne un titre au projet d\'abord.'); return; }
     const token = await getStoredToken();
-    if (!token) { Alert.alert('Clé manquante', 'Ajoute ta clé API Claude dans Réglages.'); return; }
+    if (!token) { Alert.alert('Clé manquante', 'Ajoute une clé API (Mistral, Gemini, Claude…) dans Réglages.'); return; }
     setAiLoading(true);
     try {
       const steps = await generateSteps({ text: form.text, totalHours: form.totalHours, deadline: form.deadline, steps: form.steps }, token);
