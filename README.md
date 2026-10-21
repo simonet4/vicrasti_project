@@ -56,7 +56,7 @@ L'app cible **Android**. La partie iOS n'a pas été testée, et les notificatio
 ### Lancer l'application
 
 ```bash
-git clone https://github.com/<ton-compte>/vicrasti_project.git
+git clone https://github.com/simonet4/vicrasti_project.git
 cd vicrasti_project
 npm install
 npx expo run:android
